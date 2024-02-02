@@ -3,17 +3,14 @@ pragma solidity 0.8.21;
 
 import "../src/Afore.sol";
 import "../src/mocks/Token.sol";
-import "ds-test/test.sol";
 import "forge-std/Test.sol";
-import "forge-std/VM.sol";
 
-contract AforeTest is Test, DSTest {
-    Vm vm = Vm(HEVM_ADDRESS);
-    TimeBasedMessage timeBasedMessage;
+contract AforeTest is Test {
 
     // Timestamps
-    uint32 startTimestamp;
+    uint256 startTimestamp;
 
+    // Contracts
     Afore public afore;
     Token public usdc;
     Token public mpEth;
@@ -21,21 +18,31 @@ contract AforeTest is Test, DSTest {
     address public safeWallet = address(10);
 
     function setUp(uint32 _pensionPercent) public {
-        timeBasedMessage = new TimeBasedMessage();
-        startTimestamp = block.timestamp;
-        cliffTimestamp = startTimestamp + 1 days;
-        endTimestamp = cliffTimestamp + 30 days;
+        vm.assume(_pensionPercent <= 100000);
 
+        startTimestamp = block.timestamp;
+        uint256 cliffTimestamp = startTimestamp + 1 days;
+        uint256 endTimestamp = cliffTimestamp + 30 days;
 
         usdc = new Token("Stable coin", "USDC");
         mpEth = new Token("Staked ETH", "mpETH");
+
+        address[] memory beneficiaries = new address[](3);
+        beneficiaries[0] = address(11);
+        beneficiaries[1] = address(12);
+        beneficiaries[2] = address(13);
+
+        IERC20[] memory erc20s = new IERC20[](2);
+        erc20s[0] = IERC20(usdc);
+        erc20s[0] = IERC20(mpEth);
+
         afore = new Afore(
-            cliffTimestamp,
-            endTimestamp,
+            uint32(cliffTimestamp),
+            uint32(endTimestamp),
             _pensionPercent,
             safeWallet,
-            [address(11), address(12), address(13)],
-            [address(usdc), address(mpEth)]
+            beneficiaries,
+            erc20s
         );
     }
 
