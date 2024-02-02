@@ -121,7 +121,6 @@ contract Afore is Ownable {
         }
     }
 
-
     function getAvailableEth(uint32 _progress) internal view returns (uint256 _availableEth) {
         uint256 totalEth = ethWithdraw + address(this).balance;
         uint256 pensionEth = totalEth * pensionPercent / BASIS_POINTS;
@@ -136,19 +135,18 @@ contract Afore is Ownable {
     }
 
     function getAvailableErc20(IERC20 _token, uint32 _progress) internal view returns (uint256 _available) {
-        uint256 withdraw = erc20Withdraws[_token];
-        uint256 total = withdraw + _token.balanceOf(address(this));
+        uint256 erc20Withdraw = erc20Withdraws[_token];
+        uint256 total = erc20Withdraw + _token.balanceOf(address(this));
         uint256 pension = total * pensionPercent / BASIS_POINTS;
         uint256 finalErc20 = total - pension;
 
         uint256 pensionAtThisMoment = pension * _progress / BASIS_POINTS;
-        _available = pensionAtThisMoment - withdraw;
+        _available = pensionAtThisMoment - erc20Withdraw;
 
         if (_progress == BASIS_POINTS) {
-            _available += _finalErc20;
+            _available += finalErc20;
         }
     }
-    
 
     function withdraw() public onlyBene {
         if (block.timestamp < cliffTimestamp) revert PensionNotAvailable();
@@ -166,16 +164,6 @@ contract Afore is Ownable {
             if (available > 0) erc20s[i].transfer(msg.sender, available);
 
         }
-        
-
-
-        uint32 _cliff = cliffTimestamp;
-        uint32 _end = endTimestamp;
-
-
-         
-
-
     }
 
 }
