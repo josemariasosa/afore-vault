@@ -5,7 +5,7 @@ import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
-interface IMpEth is IERC4626 {
+interface IMetaPoolETH is IERC4626 {
     function depositETH(address _receiver) external payable returns (uint256);
 }
 
@@ -106,7 +106,7 @@ library AforeLib {
 
 
 contract AforeVault {
-    using SafeERC20 for IMpEth;
+    using SafeERC20 for IMetaPoolETH;
     using AforeLib for Afore;
 
     Afore[] private afores;
@@ -121,7 +121,7 @@ contract AforeVault {
     // uint256 public immutable endTimestamp;
     // uint256 public immutable pensionPercent;
 
-    IMpEth public immutable mpEth;
+    IMetaPoolETH public immutable mpEth;
 
     // uint256 public ethWithdraw;
     // uint256 public mpEthWithdraw;
@@ -163,7 +163,7 @@ contract AforeVault {
         _;
     }
 
-    constructor(IMpEth _mpEth) {
+    constructor(IMetaPoolETH _mpEth) {
         mpEth = _mpEth;
     }
 
@@ -187,7 +187,14 @@ contract AforeVault {
         afores.push(_afore);
 
         // Set the beneficiaries for the Storage Afore.
-        afores[afores.length - 1].setBeneficiaries(_beneficiaries);
+        uint256 _newIx = afores.length - 1;
+        afores[_newIx].setBeneficiaries(_beneficiaries);
+
+        if (msg.value > 0) deposit(_newIx, 0);
+    }
+
+    function getAfore(uint256 _index) external view validIndex(_index) returns (Afore memory) {
+        return afores[_index];
     }
 
     // ***********************
@@ -231,13 +238,9 @@ contract AforeVault {
     function getAvailable(uint256 _index) public validIndex(_index) view returns (uint256) {
         Afore memory _afore = afores[_index];
         return _afore.getAvailable();
-        // return _getAvailableEth(
-        //     _getPensionProgress(_afore.cliffTimestamp, _afore.endTimestamp, block.timestamp),
-        //     _afore
-        // );
     }
 
-    function getAvailableEth(uint256 _index) public validIndex(_index) view returns (uint256) {
+    function estimateAvailableEth(uint256 _index) public validIndex(_index) view returns (uint256) {
         Afore memory _afore = afores[_index];
         return mpEth.convertToAssets(_afore.getAvailable());
     }
