@@ -23,18 +23,16 @@ contract AforeTest is Test {
 
         startTimestamp = block.timestamp;
 
-
         usdc = new Token("Stable coin", "USDC");
         weth = new Token("Wrapped ETH", "wETH");
         mpEth = new MetaPoolETH(IERC20(weth), "Staked ETH", "mpETH");
 
-
-
         vault = new AforeVault(IMetaPoolETH(address(mpEth)));
     }
 
-    function testCreateAfore(uint32 _pensionPercent) public {
+    function testCreateAfore(uint32 _pensionPercent, uint256 _amountEth) public {
         vm.assume(_pensionPercent <= 100000);
+        vm.assume(_amountEth <= msg.sender.balance);
 
         uint256 cliffTimestamp = startTimestamp + 1 days;
         uint256 endTimestamp = cliffTimestamp + 30 days;
@@ -44,18 +42,18 @@ contract AforeTest is Test {
         beneficiaries[1] = address(12);
         beneficiaries[2] = address(13);
 
-        vault.createAfore{value: 1.2424 ether}(
+        vault.createAfore{value: _amountEth}(
             cliffTimestamp,
             endTimestamp,
             _pensionPercent,
             safeWallet,
             beneficiaries
         );
-
         Afore memory _afore = vault.getAfore(0);
-        // console.log(_afore);
-        console.log(_afore.mpEthBalance);
-        console.log("JOSE ACA");
+
+        // Expect this due 1:1 ETH and MPETH
+        assertEq(_afore.mpEthBalance, _amountEth);
+        assertEq(vault.getTotalAfores(), 1);
     }
 
     // function testIncrement() public {

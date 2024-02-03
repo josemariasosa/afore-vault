@@ -20,25 +20,7 @@ contract MetaPoolETH is ERC4626 {
         uint256 _assets,
         uint256 _shares
     ) internal override {
-        // if (_assets < MIN_DEPOSIT) revert DepositTooLow(MIN_DEPOSIT, _assets);
-        // (uint256 sharesFromPool, uint256 assetsToPool) = _getmpETHFromPool(_shares, address(this));
-        // uint256 sharesToMint = _shares - sharesFromPool;
-        // uint256 assetsToAdd = _assets - assetsToPool;
-
-        // if (sharesToMint > 0) _mint(address(this), sharesToMint);
-        // totalUnderlying += assetsToAdd;
-
-        // uint256 sharesToUser = _shares;
-
-        // if (msg.sender != liquidUnstakePool) {
-        //     uint256 sharesToTreasury = (_shares * depositFee) / 10000;
-        //     _transfer(address(this), treasury, sharesToTreasury);
-        //     sharesToUser -= sharesToTreasury;
-        // }
-
         _mint(_receiver, _shares);
-
-
         emit Deposit(_caller, _receiver, _assets, _shares);
     }
 }

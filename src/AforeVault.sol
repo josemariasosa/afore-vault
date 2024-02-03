@@ -163,9 +163,7 @@ contract AforeVault {
         _;
     }
 
-    constructor(IMetaPoolETH _mpEth) {
-        mpEth = _mpEth;
-    }
+    constructor(IMetaPoolETH _mpEth) { mpEth = _mpEth; }
 
     // receive() extessnal payable {}
 
@@ -196,6 +194,8 @@ contract AforeVault {
     function getAfore(uint256 _index) external view validIndex(_index) returns (Afore memory) {
         return afores[_index];
     }
+
+    function getTotalAfores() external view returns (uint256) { return afores.length; }
 
     // ***********************
     // * Beneficiaries Admin *
