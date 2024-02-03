@@ -11,6 +11,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 
+import {IMetaPoolETH} from "./AforeVault.sol";
+
 // import "./AforeVault.sol";
 
 /// @notice Liquidity Pool that allows the fast convertion of stAUR to AURORA tokens.
@@ -27,8 +29,10 @@ contract AforeLiquidPool is FullyOperational, ERC4626 {
     // bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
     /// @dev Contract addresses of the stAUR vault and the AURORA token.
-    address immutable public afore;
+    address immutable public aforeVault;
     address immutable public stableUsd;
+
+    IMetaPoolETH immutable public mpEth;
 
     /// @dev Internal accounting for the two vault assets.
     uint256 public mpEthBalance;
@@ -56,106 +60,104 @@ contract AforeLiquidPool is FullyOperational, ERC4626 {
         _;
     }
 
+    //** Base asset must be USD */
+
     constructor(
-        address _stAurVault,
-        address _auroraToken,
-        address _feeCollectorRole,
-        address _contractOperatorRole,
+        address _aforeVault,
+        address _stableUsd,
+        address _mpEth,
         string memory _lpTokenName,
         string memory _lpTokenSymbol,
-        uint256 _minDepositAmount,
-        uint256 _swapFeeBasisPoints,
-        uint256 _liqProvFeeCutBasisPoints
+        uint256 _swapFeeBasisPoints
     )
-        ERC4626(IERC20(_auroraToken))
+        ERC4626(IERC20(_stableUsd))
         ERC20(_lpTokenName, _lpTokenSymbol)
         validBP(_swapFeeBasisPoints)
-        validBP(_liqProvFeeCutBasisPoints)
     {
-        if (_stAurVault == address(0)
-                || _auroraToken == address(0)
-                || _feeCollectorRole == address(0)
-                || _contractOperatorRole == address(0)) { revert InvalidZeroAddress(); }
-        stAurVault = _stAurVault;
-        auroraToken = _auroraToken;
-        minDepositAmount = _minDepositAmount;
+        if (_aforeVault == address(0) || _mpEth == address(0) || _stableUsd == address(0)) {
+            revert InvalidZeroAddress();
+        }
+
+        aforeVault = _aforeVault;
+        stableUsd = _stableUsd;
+        mpEth = _mpEth;
         swapFeeBasisPoints = _swapFeeBasisPoints;
-        liqProvFeeCutBasisPoints = _liqProvFeeCutBasisPoints;
         fullyOperational = true;
 
-        _grantRole(ADMIN_ROLE, msg.sender);
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(TREASURY_ROLE, _feeCollectorRole);
-        _grantRole(OPERATOR_ROLE, _contractOperatorRole);
+        // _grantRole(ADMIN_ROLE, msg.sender);
+        // _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        // _grantRole(TREASURY_ROLE, _feeCollectorRole);
+        // _grantRole(OPERATOR_ROLE, _contractOperatorRole);
     }
 
     receive() external payable {}
 
-    function updateMinDepositAmount(
-        uint256 _amount
-    ) external onlyRole(OPERATOR_ROLE) {
-        minDepositAmount = _amount;
+    // function updateMinDepositAmount(
+    //     uint256 _amount
+    // ) external onlyRole(OPERATOR_ROLE) {
+    //     minDepositAmount = _amount;
 
-        emit UpdateMinDepositAmount(_amount, msg.sender);
-    }
+    //     emit UpdateMinDepositAmount(_amount, msg.sender);
+    // }
 
-    function updateFeeBasisPoints(
-        uint256 _feeBasisPoints
-    ) external onlyRole(OPERATOR_ROLE) validBP(_feeBasisPoints) {
-        swapFeeBasisPoints = _feeBasisPoints;
+    // function updateFeeBasisPoints(
+    //     uint256 _feeBasisPoints
+    // ) external onlyRole(OPERATOR_ROLE) validBP(_feeBasisPoints) {
+    //     swapFeeBasisPoints = _feeBasisPoints;
 
-        emit UpdateFeeBasisPoints(_feeBasisPoints, msg.sender);
-    }
+    //     emit UpdateFeeBasisPoints(_feeBasisPoints, msg.sender);
+    // }
 
-    function updateLiqProvFeeBasisPoints(
-        uint256 _feeBasisPoints
-    ) external onlyRole(OPERATOR_ROLE) validBP(_feeBasisPoints) {
-        liqProvFeeCutBasisPoints = _feeBasisPoints;
+    // function updateLiqProvFeeBasisPoints(
+    //     uint256 _feeBasisPoints
+    // ) external onlyRole(OPERATOR_ROLE) validBP(_feeBasisPoints) {
+    //     liqProvFeeCutBasisPoints = _feeBasisPoints;
 
-        emit UpdateLiqProvFeeBasisPoints(_feeBasisPoints, msg.sender);
-    }
+    //     emit UpdateLiqProvFeeBasisPoints(_feeBasisPoints, msg.sender);
+    // }
 
-    /// @notice Use in case of emergency 🦺, stops: 1) adding and removing
-    /// liquidity, 2) all swaps from stAUR to AURORA tokens and 3) providing
-    /// stAUR token liquidity to cover deposits (FLOW 1).
-    function updateContractOperation(
-        bool _isFullyOperational
-    ) public override onlyRole(ADMIN_ROLE) {
-        fullyOperational = _isFullyOperational;
+    // /// @notice Use in case of emergency 🦺, stops: 1) adding and removing
+    // /// liquidity, 2) all swaps from stAUR to AURORA tokens and 3) providing
+    // /// stAUR token liquidity to cover deposits (FLOW 1).
+    // function updateContractOperation(
+    //     bool _isFullyOperational
+    // ) public override onlyRole(ADMIN_ROLE) {
+    //     fullyOperational = _isFullyOperational;
 
-        emit ContractUpdateOperation(_isFullyOperational, msg.sender);
-    }
+    //     emit ContractUpdateOperation(_isFullyOperational, msg.sender);
+    // }
 
-    /// @notice Function to evaluate if a Vault deposit can be covered by the
-    /// balance of stAUR tokens in the Liquidity Pool.
-    function isStAurBalanceAvailable(uint256 _amount) external view returns(bool) {
-        return (stAurBalance >= _amount) && fullyOperational;
-    }
+    // /// @notice Function to evaluate if a Vault deposit can be covered by the
+    // /// balance of stAUR tokens in the Liquidity Pool.
+    // function isStAurBalanceAvailable(uint256 _amount) external view returns(bool) {
+    //     return (stAurBalance >= _amount) && fullyOperational;
+    // }
 
-    /// @notice The stAUR Vault will emit the Deposit event if this function runs.
-    /// @dev This function will ONLY be called by the stAUR vault
-    /// to cover Aurora deposits (FLOW 1).
-    function transferStAur(
-        address _receiver,
-        uint256 _amount,
-        uint256 _assets
-    ) external onlyStAurVault {
-        stAurBalance -= _amount;
-        address _stAurVault = stAurVault;
-        IStakedAuroraVault(_stAurVault).safeTransfer(_receiver, _amount);
-        auroraBalance += _assets;
-        IERC20(auroraToken).safeTransferFrom(_stAurVault, address(this), _assets);
+    // /// @notice The stAUR Vault will emit the Deposit event if this function runs.
+    // /// @dev This function will ONLY be called by the stAUR vault
+    // /// to cover Aurora deposits (FLOW 1).
+    // function transferStAur(
+    //     address _receiver,
+    //     uint256 _amount,
+    //     uint256 _assets
+    // ) external onlyStAurVault {
+    //     stAurBalance -= _amount;
+    //     address _stAurVault = stAurVault;
+    //     IStakedAuroraVault(_stAurVault).safeTransfer(_receiver, _amount);
+    //     auroraBalance += _assets;
+    //     IERC20(auroraToken).safeTransferFrom(_stAurVault, address(this), _assets);
 
-        emit StAurLiquidityProvidedByPool(_receiver, _amount, _assets);
-    }
+    //     emit StAurLiquidityProvidedByPool(_receiver, _amount, _assets);
+    // }
     
     /// @dev Calculate sum of AURORA and stAUR balance, converting the amount of
     /// stAUR to AURORA using the Vault price.
     /// @return _amount Denominated in AURORA tokens.
     function totalAssets() public view override returns (uint256) {
+        uint256 eth = mpEth.convertToAssets(mpEthBalance);
         return (
-            auroraBalance
-                + IStakedAuroraVault(stAurVault).convertToAssets(stAurBalance)
+            usdBalance
+                + 
         );
     }
 
