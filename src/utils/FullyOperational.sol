@@ -2,12 +2,15 @@
 pragma solidity 0.8.21;
 
 interface IFullyOperational {
+    event ContractUpdateOperation(bool _fullyOperational, address _sender);
     error NotFullyOperational();
 
     function isFullyOperational() external view returns (bool);
 }
 
 abstract contract FullyOperational is IFullyOperational {
+
+
     bool public fullyOperational;
 
     modifier onlyFullyOperational() {
