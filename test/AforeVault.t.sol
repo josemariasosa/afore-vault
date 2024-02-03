@@ -4,7 +4,11 @@ pragma solidity 0.8.21;
 import "../src/AforeVault.sol";
 import "../src/mocks/Token.sol";
 import "../src/mocks/MetaPoolETH.sol";
+import "../src/AforeLiquidPool.sol";
+import "../src/mocks/EthUsdPriceOracle.sol";
 import "forge-std/Test.sol";
+
+import {IEthUsdPriceOracle} from "../src/interfaces/IEthUsdPriceOracle.sol";
 
 contract AforeTest is Test {
 
@@ -17,6 +21,9 @@ contract AforeTest is Test {
     MetaPoolETH public mpEth;
     Token public weth;
 
+    AforeLiquidPool public lp;
+    EthUsdPriceOracle public oracle;
+
     address public safeWallet = address(10);
 
     function setUp() public {
@@ -28,6 +35,17 @@ contract AforeTest is Test {
         mpEth = new MetaPoolETH(IERC20(weth), "Staked ETH", "mpETH");
 
         vault = new AforeVault(IMetaPoolETH(address(mpEth)));
+
+        oracle = new EthUsdPriceOracle();
+        lp = new AforeLiquidPool(
+            address(vault),
+            address(usdc),
+            IMetaPoolETH(address(mpEth)),
+            IEthUsdPriceOracle(address(oracle)),
+            "mpETH USDC Liquid Pool",
+            "mpETH/USDC LP",
+            5000
+        );
     }
 
     function testCreateAfore(uint32 _pensionPercent, uint256 _amountEth) public {
@@ -56,10 +74,12 @@ contract AforeTest is Test {
         assertEq(vault.getTotalAfores(), 1);
     }
 
-    // function testIncrement() public {
-    //     counter.increment();
-    //     assertEq(counter.number(), 1);
-    // }
+    function testOracle() public {
+        console.log(lp.convertMpEth2Usd(1 ether));
+        console.log(230489902662);
+        console.log("JOOOOSE");
+        assertEq(lp.convertMpEth2Usd(1 ether), 230489902662);
+    }
 
     // function testSetNumber(uint256 x) public {
     //     counter.setNumber(x);

@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 
 import {IMetaPoolETH} from "./AforeVault.sol";
-import {IEthUsdPriceOracle} from "./EthUsdPriceOracle.sol";
+import {IEthUsdPriceOracle} from "./interfaces/IEthUsdPriceOracle.sol";
 
 // import "./AforeVault.sol";
 
@@ -173,10 +173,11 @@ contract AforeLiquidPool is FullyOperational, ERC4626 {
     }
 
     function convertMpEth2Usd(uint256 _mpEthAmount) public view returns (uint256) {
-        uint256 eth = mpEth.convertToAssets(mpEthBalance);
+        uint256 eth = mpEth.convertToAssets(_mpEthAmount);
         uint256 price = uint256(ethUsdOracle.getLatestPrice());
 
-        return eth * price / 10 ** uint(ethUsdOracle.decimals()) / 10 ** 12;
+        // WARNING!!!!!!! _________
+        return eth * price / 10 ** uint(ethUsdOracle.decimals()) / 10 ** 10;
     }
 
     /// @notice The deposit flow is used to **Add** liquidity to the Liquidity Pool.

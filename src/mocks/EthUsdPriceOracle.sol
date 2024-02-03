@@ -3,10 +3,7 @@ pragma solidity 0.8.21;
 
 // import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-interface IEthUsdPriceOracle {
-    function getLatestPrice() external view returns (int256);
-    function decimals() external view returns (int256);
-}
+
 
 contract EthUsdPriceOracle {
     // AggregatorV3Interface internal priceFeed;
