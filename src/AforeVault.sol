@@ -5,6 +5,8 @@ import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
+import {IAforeLiquidPool} from "./interfaces/IAforeLiquidPool.sol";
+
 interface IMetaPoolETH is IERC4626 {
     function depositETH(address _receiver) external payable returns (uint256);
 }
@@ -107,6 +109,7 @@ library AforeLib {
 
 contract AforeVault {
     using SafeERC20 for IMetaPoolETH;
+    using SafeERC20 for IERC20;
     using AforeLib for Afore;
 
     Afore[] private afores;
@@ -122,6 +125,8 @@ contract AforeVault {
     // uint256 public immutable pensionPercent;
 
     IMetaPoolETH public immutable mpEth;
+    IERC20 public immutable usdToken;
+    IAforeLiquidPool public lp;
 
     // uint256 public ethWithdraw;
     // uint256 public mpEthWithdraw;
@@ -138,6 +143,7 @@ contract AforeVault {
     error PensionNotAvailable();
     error InvalidIndex();
     error InvalidAmount();
+    error UnavailableLp();
 
     // modifier onlyBene {
     //     if (containsBeneficiary(msg.sender)) {
@@ -163,7 +169,15 @@ contract AforeVault {
         _;
     }
 
-    constructor(IMetaPoolETH _mpEth) { mpEth = _mpEth; }
+    constructor(IMetaPoolETH _mpEth, IERC20 _usdToken) {
+        mpEth = _mpEth;
+        usdToken = _usdToken;
+    }
+
+
+    function updateLp(IAforeLiquidPool _lp) external {
+        lp = _lp;
+    }
 
     // receive() extessnal payable {}
 
@@ -213,27 +227,23 @@ contract AforeVault {
             || _afore.beneficiary3 == _address;
     }
 
-    // Deposit mpETH
+    // Deposit mpETH and ETH
 
     function deposit(uint256 _index, uint256 _mpEthAmount) public payable validIndex(_index) {
-        uint256 _totalDeposit;
-
-        if (msg.value > 0) {
-            // depositETH returns the amount of "shares" mpETH.
-            _totalDeposit += mpEth.depositETH{value: msg.value}(address(this));
-        }
-
-        if (_mpEthAmount > 0) {
-            mpEth.safeTransferFrom(msg.sender, address(this), _mpEthAmount);
-            _totalDeposit += _mpEthAmount;
-        }
-
-        if (_totalDeposit == 0) revert InvalidAmount();
-
-        Afore storage _afore = afores[_index];
-        _afore.mpEthBalance += _totalDeposit;
+        _deposit(_index, _mpEthAmount);
     }
 
+    function depositUSD(uint256 _index, uint256 _amount) public validIndex(_index) {
+        if (_amount == 0) revert InvalidAmount();
+        if (address(lp) == address(0)) revert UnavailableLp();
+
+        usdToken.safeTransferFrom(msg.sender, address(this), _amount);
+
+        usdToken.safeIncreaseAllowance(address(lp), _amount);
+        uint256 _purchasedMpEth = lp.swapUsd2MpEth(_amount);
+
+        _deposit(_index, _purchasedMpEth);
+    }
 
     function getAvailable(uint256 _index) public validIndex(_index) view returns (uint256) {
         Afore memory _afore = afores[_index];
@@ -315,5 +325,24 @@ contract AforeVault {
 
     //     }
     // }
+
+    function _deposit(uint256 _index, uint256 _mpEthAmount) private {
+        uint256 _totalDeposit;
+
+        if (msg.value > 0) {
+            // depositETH returns the amount of "shares" mpETH.
+            _totalDeposit += mpEth.depositETH{value: msg.value}(address(this));
+        }
+
+        if (_mpEthAmount > 0) {
+            mpEth.safeTransferFrom(msg.sender, address(this), _mpEthAmount);
+            _totalDeposit += _mpEthAmount;
+        }
+
+        if (_totalDeposit == 0) revert InvalidAmount();
+
+        Afore storage _afore = afores[_index];
+        _afore.mpEthBalance += _totalDeposit;
+    }
 
 }

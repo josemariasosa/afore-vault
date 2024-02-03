@@ -34,7 +34,10 @@ contract AforeTest is Test {
         weth = new Token("Wrapped ETH", "wETH");
         mpEth = new MetaPoolETH(IERC20(weth), "Staked ETH", "mpETH");
 
-        vault = new AforeVault(IMetaPoolETH(address(mpEth)));
+        vault = new AforeVault(
+            IMetaPoolETH(address(mpEth)),
+            IERC20(address(usdc))
+        );
 
         oracle = new EthUsdPriceOracle();
         lp = new AforeLiquidPool(
@@ -46,6 +49,8 @@ contract AforeTest is Test {
             "mpETH/USDC LP",
             5000
         );
+
+        vault.updateLp(IAforeLiquidPool(address(lp)));
     }
 
     function testCreateAfore(uint32 _pensionPercent, uint256 _amountEth) public {

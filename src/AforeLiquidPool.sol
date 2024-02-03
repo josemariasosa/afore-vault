@@ -55,12 +55,15 @@ contract AforeLiquidPool is FullyOperational, ERC4626 {
 
     // /// @dev The remaining Fees will be available to be collected by Meta Pool.
     // uint256 public collectedStAurFees;
+    uint256 public collectedMpEthFees;
 
     error Unauthorized();
     error InvalidBasisPoints();
     error InvalidZeroAddress();
     error LessThanMinDeposit();
     error InvalidZeroAmount();
+    error NotEnoughBalance();
+    error SlippageError();
 
     modifier onlyAforeVault() {
         if (msg.sender != aforeVault) { revert Unauthorized(); }
@@ -105,6 +108,7 @@ contract AforeLiquidPool is FullyOperational, ERC4626 {
     }
 
     receive() external payable {}
+
 
     // function updateMinDepositAmount(
     //     uint256 _amount
@@ -178,6 +182,18 @@ contract AforeLiquidPool is FullyOperational, ERC4626 {
 
         // WARNING!!!!!!! _________
         return eth * price / 10 ** uint(ethUsdOracle.decimals()) / 10 ** 10;
+    }
+
+    function convertUsd2MpEth(uint256 _usdAmount) public view returns (uint256) {
+        uint256 price = uint256(ethUsdOracle.getLatestPrice());
+        uint256 eth = _usdAmount / price;
+
+        return eth;
+        // uint256 eth = mpEth.convertToAssets(_mpEthAmount);
+        // uint256 price = uint256(ethUsdOracle.getLatestPrice());
+
+        // // WARNING!!!!!!! _________
+        // return eth * price / 10 ** uint(ethUsdOracle.decimals()) / 10 ** 10;
     }
 
     /// @notice The deposit flow is used to **Add** liquidity to the Liquidity Pool.
@@ -270,6 +286,54 @@ contract AforeLiquidPool is FullyOperational, ERC4626 {
 
         return shares;
     }
+
+
+
+
+
+    function swapUsd2MpEth(uint256 _amount, uint256 _minMpEthToReceive) external returns (uint256) {
+        if (_amount == 0) { revert InvalidZeroAmount(); }
+
+        uint256 totalMpEth = convertUsd2MpEth(_amount);
+        if (totalMpEth > mpEthBalance) { revert NotEnoughBalance(); }
+
+        (
+            uint256 _mpEthToSend,
+            uint256 _collectedFee,
+            uint256 _lpFeeCut
+        ) = _calculatePoolFees(totalMpEth);
+
+        if (_mpEthToSend < _minMpEthToReceive) { revert SlippageError(); }
+
+        usdBalance += _amount;
+        collectedMpEthFees += _collectedFee;
+        mpEthBalance -= (_mpEthToSend + _collectedFee);
+
+        // stAurBalance += (_discountedAmount + _lpFeeCut);
+        // collectedStAurFees += _collectedFee;
+        // auroraBalance -= auroraToSend;
+
+        // Step 1. Get the caller stAUR tokens.
+        IERC20(stableUsd).safeTransferFrom(msg.sender, address(this), _amount);
+
+        // Step 2. Transfer the MpEth tokens to the caller.
+        mpEth.safeTransfer(msg.sender, _mpEthToSend);
+
+        return _mpEthToSend;
+
+        // emit SwapStAur(
+        //     msg.sender,
+        //     auroraToSend,
+        //     _stAurAmount,
+        //     _collectedFee + _lpFeeCut
+        // );
+
+        // // IStakedAuroraVault vault = IStakedAuroraVault(stAurVault);
+        // // uint256 auroraToSend = vault.convertToAssets(_discountedAmount);
+
+        // IERC20(stableUsd).safeTransferFrom(msg.sender, address(this), _amount);
+    }
+
 
     // /// @param _amount Denominated in stAUR.
     // /// @return _auroraAmount Denominated in AURORA.
