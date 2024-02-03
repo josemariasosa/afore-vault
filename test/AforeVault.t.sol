@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.21;
 
-import "../src/Afore.sol";
+import "../src/AforeVault.sol";
 import "../src/mocks/Token.sol";
 import "forge-std/Test.sol";
 
@@ -11,7 +11,7 @@ contract AforeTest is Test {
     uint256 startTimestamp;
 
     // Contracts
-    Afore public afore;
+    AforeVault public afore;
     Token public usdc;
     Token public mpEth;
 
@@ -36,7 +36,7 @@ contract AforeTest is Test {
         erc20s[0] = IERC20(usdc);
         erc20s[0] = IERC20(mpEth);
 
-        afore = new Afore(
+        afore = new AforeVault(
             uint32(cliffTimestamp),
             uint32(endTimestamp),
             _pensionPercent,
